@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BF6 Strat Roulette</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0e;
+    --bg2: #111418;
+    --bg3: #181d22;
+    --card: #1a2028;
+    --border: #2a3540;
+    --border2: #3a4a58;
+    --accent: #e8a020;
+    --accent2: #c46a10;
+    --blue: #3a9bd5;
+    --red: #d94040;
+    --green: #3db870;
+    --muted: #6a7f8f;
+    --text: #d8e8f0;
+    --text2: #8aa0b0;
+    --chaos: #c03030;
+    --hard: #9030c0;
+    --fun: #208050;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    height: 64px;
+  }
+  .logo {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--text2); font-weight: 400; font-size: 14px; letter-spacing: 2px; }
+  .header-rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* Cards */
+  .roulette-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  @media (max-width: 640px) { .roulette-grid { grid-template-columns: 1fr; } }
+
+  .slot-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .slot-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.6;
+  }
+  .slot-card.strat-card::before { background: var(--blue); }
+
+  .card-header {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    padding: 0.6rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .card-header-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .strat-card .card-header-title { color: var(--blue); }
+
+  .lock-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    border-radius: 3px;
+    padding: 3px 10px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lock-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .lock-btn.locked { border-color: var(--accent); color: var(--accent); background: rgba(232,160,32,0.08); }
+  .strat-card .lock-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .strat-card .lock-btn.locked { border-color: var(--blue); color: var(--blue); background: rgba(58,155,213,0.08); }
+
+  .lock-icon { font-size: 12px; }
+
+  .card-body {
+    padding: 1.25rem 1rem;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .result-id {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .result-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+    letter-spacing: 1px;
+  }
+  .result-effect {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.5;
+    flex: 1;
+  }
+  .result-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+  }
+  .tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+  }
+  .tag-chaos { background: rgba(192,48,48,0.15); color: #e05050; border: 1px solid rgba(192,48,48,0.3); }
+  .tag-hard { background: rgba(144,48,192,0.15); color: #c070e0; border: 1px solid rgba(144,48,192,0.3); }
+  .tag-fun { background: rgba(32,128,80,0.15); color: #50d090; border: 1px solid rgba(32,128,80,0.3); }
+  .tag-players { background: rgba(50,80,100,0.3); color: var(--text2); border: 1px solid var(--border2); }
+
+  /* Spinning animation */
+  .card-body.spinning .result-name,
+  .card-body.spinning .result-effect,
+  .card-body.spinning .result-id,
+  .card-body.spinning .result-tags {
+    animation: flickerSlot 0.08s steps(1) infinite;
+  }
+  @keyframes flickerSlot {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .card-body.landing .result-name {
+    animation: landFlash 0.4s ease-out;
+  }
+  @keyframes landFlash {
+    0% { color: var(--accent); }
+    100% { color: var(--text); }
+  }
+  .strat-card .card-body.landing .result-name {
+    animation: landFlashBlue 0.4s ease-out;
+  }
+  @keyframes landFlashBlue {
+    0% { color: var(--blue); }
+    100% { color: var(--text); }
+  }
+
+  /* Roll button */
+  .roll-section {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+
+  .roll-btn {
+    background: var(--accent);
+    color: #0a0c0e;
+    border: none;
+    border-radius: 3px;
+    padding: 0.75rem 2.5rem;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .roll-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.15);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .roll-btn:hover::before { opacity: 1; }
+  .roll-btn:active { transform: scale(0.97); }
+  .roll-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .roll-btn.secondary {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border2);
+    font-size: 13px;
+    padding: 0.75rem 1.5rem;
+  }
+  .roll-btn.secondary:hover { border-color: var(--text2); color: var(--text); }
+
+  /* History */
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .history-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.6rem 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1rem;
+    font-size: 13px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  .history-item:hover { opacity: 1; }
+  .history-item:first-child { opacity: 1; }
+  .h-label { color: var(--muted); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+  .h-val { color: var(--text2); }
+  .h-val strong { color: var(--text); }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-right: 0.25rem;
+  }
+  .filter-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: 2px;
+    padding: 4px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+  .filter-btn.active-chaos { border-color: var(--chaos); color: #e05050; background: rgba(192,48,48,0.1); }
+  .filter-btn.active-hard { border-color: var(--hard); color: #c070e0; background: rgba(144,48,192,0.1); }
+  .filter-btn.active-fun { border-color: var(--fun); color: #50d090; background: rgba(32,128,80,0.1); }
+
+  .players-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+  .players-input label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .players-input input {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: 2px;
+    padding: 4px 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    width: 48px;
+    text-align: center;
+  }
+  .players-input input:focus { outline: none; border-color: var(--accent); }
+
+  /* Empty state */
+  .empty-state {
+    color: var(--muted);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  /* Reroll single button inside card */
+  .reroll-single {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .reroll-single button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: 2px;
+    padding: 3px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .reroll-single button:hover { border-color: var(--accent); color: var(--accent); }
+  .strat-card .reroll-single button:hover { border-color: var(--blue); color: var(--blue); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BF6 <span>// STRAT ROULETTE</span></div>
+  <div class="header-rule"></div>
+</header>
+
+<main>
+  <div class="filter-bar">
+    <span class="filter-label">Difficulty</span>
+    <button class="filter-btn" id="f-fun" onclick="toggleFilter('fun')">Fun</button>
+    <button class="filter-btn" id="f-chaos" onclick="toggleFilter('chaos')">Chaos</button>
+    <button class="filter-btn" id="f-hard" onclick="toggleFilter('hard')">Hard</button>
+    <div class="players-input">
+      <label for="squad-size">Squad</label>
+      <input type="number" id="squad-size" min="1" max="4" value="4">
+    </div>
+  </div>
+
+  <div class="roulette-grid">
+    <!-- Modifier slot -->
+    <div class="slot-card" id="mod-card">
+      <div class="card-header">
+        <span class="card-header-title">Modifier</span>
+        <button class="lock-btn" id="mod-lock" onclick="toggleLock('mod')">
+          <span class="lock-icon">○</span> Lock
+        </button>
+      </div>
+      <div class="card-body" id="mod-body">
+        <div class="empty-state">Press ROLL to start</div>
+      </div>
+      <div class="reroll-single">
+        <button onclick="rerollOne('mod')">↻ Reroll modifier</button>
+      </div>
+    </div>
+
+    <!-- Strat slot -->
+    <div class="slot-card strat-card" id="strat-card">
+      <div class="card-header">
+        <span class="card-header-title">Squad Strat</span>
+        <button class="lock-btn" id="strat-lock" onclick="toggleLock('strat')">
+          <span class="lock-icon">○</span> Lock
+        </button>
+      </div>
+      <div class="card-body" id="strat-body">
+        <div class="empty-state">Press ROLL to start</div>
+      </div>
+      <div class="reroll-single">
+        <button onclick="rerollOne('strat')">↻ Reroll strat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="roll-section">
+    <button class="roll-btn" id="main-roll" onclick="rollAll()">⟳ ROLL</button>
+    <button class="roll-btn secondary" onclick="clearHistory()">Clear History</button>
+  </div>
+
+  <div class="section-title">Roll History</div>
+  <div class="history-list" id="history-list">
+    <div class="empty-state" style="padding:1rem 0">No rolls yet.</div>
+  </div>
+</main>
+
+<script>
+const MODIFIERS = [
+{"id":1,"name":"No HUD","effect":"Disable HUD","difficulty":"fun"},
+{"id":2,"name":"No Sprint","effect":"Walking only","difficulty":"chaos"},
+{"id":3,"name":"Crouch Only","effect":"Stay crouched","difficulty":"chaos"},
+{"id":4,"name":"Prone Only","effect":"Stay prone","difficulty":"chaos"},
+{"id":5,"name":"Jump Only Combat","effect":"Jump in fights","difficulty":"chaos"},
+{"id":6,"name":"Spin Before Shoot","effect":"Spin before firing","difficulty":"chaos"},
+{"id":7,"name":"Reload After Kill","effect":"Reload every kill","difficulty":"fun"},
+{"id":8,"name":"No Reload","effect":"No reloading","difficulty":"hard"},
+{"id":9,"name":"Last Bullet Only","effect":"Kill with last bullet","difficulty":"hard"},
+{"id":10,"name":"Single Fire Only","effect":"Semi-auto only","difficulty":"fun"},
+{"id":11,"name":"Full Auto Only","effect":"Auto fire only","difficulty":"fun"},
+{"id":12,"name":"Hipfire Only","effect":"No ADS","difficulty":"fun"},
+{"id":13,"name":"ADS Only","effect":"Must ADS","difficulty":"fun"},
+{"id":14,"name":"No Primary","effect":"Secondary only","difficulty":"fun"},
+{"id":15,"name":"No Secondary","effect":"Primary only","difficulty":"fun"},
+{"id":16,"name":"Knife First","effect":"Melee before shooting","difficulty":"fun"},
+{"id":17,"name":"Grenade First","effect":"Throw grenade first","difficulty":"chaos"},
+{"id":18,"name":"Gadgets Only","effect":"No guns","difficulty":"chaos"},
+{"id":19,"name":"No Gadgets","effect":"Weapons only","difficulty":"fun"},
+{"id":20,"name":"Random Weapon Each Life","effect":"Swap every spawn","difficulty":"fun"},
+{"id":21,"name":"Random Sensitivity","effect":"Change sens each life","difficulty":"chaos"},
+{"id":22,"name":"No Minimap","effect":"Disable minimap","difficulty":"fun"},
+{"id":23,"name":"Mute Audio","effect":"Play without sound","difficulty":"chaos"},
+{"id":24,"name":"Max Volume","effect":"Audio maxed","difficulty":"chaos"},
+{"id":25,"name":"Invert Controls","effect":"Invert aim","difficulty":"chaos"},
+{"id":26,"name":"Delayed Shooting","effect":"Wait 1s before firing","difficulty":"chaos"},
+{"id":27,"name":"Random Reload","effect":"Reload randomly","difficulty":"chaos"},
+{"id":28,"name":"No Stop Shooting","effect":"Keep firing","difficulty":"chaos"},
+{"id":29,"name":"Burst Fire Only","effect":"Short bursts only","difficulty":"fun"},
+{"id":30,"name":"Slow Aim","effect":"Lower sensitivity","difficulty":"fun"},
+{"id":31,"name":"Fast Aim","effect":"High sensitivity","difficulty":"chaos"},
+{"id":32,"name":"No Jump","effect":"Jump disabled","difficulty":"fun"},
+{"id":33,"name":"Slide Only","effect":"Move via sliding","difficulty":"chaos"},
+{"id":34,"name":"Sprint Burst","effect":"Short sprints only","difficulty":"fun"},
+{"id":35,"name":"Stop Every 10s","effect":"Pause movement","difficulty":"chaos"},
+{"id":36,"name":"Shoot Every 10s","effect":"Fire periodically","difficulty":"chaos"},
+{"id":37,"name":"Ping Everything","effect":"Constant pinging","difficulty":"fun"},
+{"id":38,"name":"No Ping","effect":"No spotting","difficulty":"fun"},
+{"id":39,"name":"Random Direction Shooting","effect":"Fire randomly first","difficulty":"chaos"},
+{"id":40,"name":"360 After Kill","effect":"Spin after kill","difficulty":"chaos"},
+{"id":41,"name":"Drop Weapon After Kill","effect":"Swap weapons","difficulty":"fun"},
+{"id":42,"name":"No Healing","effect":"No heals","difficulty":"hard"},
+{"id":43,"name":"No Ammo","effect":"No resupply","difficulty":"hard"},
+{"id":44,"name":"Always Reload Empty","effect":"Only reload empty mags","difficulty":"fun"},
+{"id":45,"name":"Shoot Legs Only","effect":"Aim low","difficulty":"chaos"},
+{"id":46,"name":"Headshots Only","effect":"Only headshots count","difficulty":"hard"},
+{"id":47,"name":"No Cover","effect":"Avoid cover","difficulty":"chaos"},
+{"id":48,"name":"Cover Only","effect":"Stay in cover","difficulty":"fun"},
+{"id":49,"name":"High Ground Only","effect":"Stay elevated","difficulty":"fun"},
+{"id":50,"name":"Low Ground Only","effect":"Stay low","difficulty":"fun"},
+{"id":51,"name":"No Sprint Combat","effect":"No sprint in fights","difficulty":"fun"},
+{"id":52,"name":"Jump After Kill","effect":"Jump every kill","difficulty":"fun"},
+{"id":53,"name":"Crouch After Kill","effect":"Crouch after kill","difficulty":"fun"},
+{"id":54,"name":"Reload Spam","effect":"Reload constantly","difficulty":"chaos"},
+{"id":55,"name":"Fire in Air","effect":"Shoot before aiming","difficulty":"chaos"},
+{"id":56,"name":"No Scope","effect":"Remove optics","difficulty":"fun"},
+{"id":57,"name":"Max Zoom","effect":"Use max zoom","difficulty":"chaos"},
+{"id":58,"name":"Random Attachments","effect":"Randomise loadout","difficulty":"fun"},
+{"id":59,"name":"No Switching","effect":"Stick to one weapon","difficulty":"fun"},
+{"id":60,"name":"Switch Constantly","effect":"Swap weapons often","difficulty":"chaos"},
+{"id":61,"name":"Delay Movement","effect":"Wait before moving","difficulty":"chaos"},
+{"id":62,"name":"Rush Immediately","effect":"Move instantly","difficulty":"fun"},
+{"id":63,"name":"Stop Shooting Early","effect":"Release trigger early","difficulty":"fun"},
+{"id":64,"name":"Overcommit","effect":"Never disengage","difficulty":"chaos"},
+{"id":65,"name":"Disengage Always","effect":"Avoid fights","difficulty":"fun"},
+{"id":66,"name":"No Revives","effect":"Disable revives","difficulty":"hard"},
+{"id":67,"name":"Revive Only","effect":"Focus revives","difficulty":"fun"},
+{"id":68,"name":"Heal Spam","effect":"Constant healing","difficulty":"fun"},
+{"id":69,"name":"Ammo Spam","effect":"Constant ammo drops","difficulty":"fun"},
+{"id":70,"name":"Spot Spam","effect":"Constant spotting","difficulty":"fun"},
+{"id":71,"name":"No Vehicles","effect":"Ignore vehicles","difficulty":"fun"},
+{"id":72,"name":"Vehicles Only","effect":"Use vehicles only","difficulty":"chaos"},
+{"id":73,"name":"Exit Vehicles Early","effect":"Leave quickly","difficulty":"chaos"},
+{"id":74,"name":"Stay in Vehicle","effect":"Stay longer","difficulty":"fun"},
+{"id":75,"name":"Random Exit","effect":"Exit randomly","difficulty":"chaos"},
+{"id":76,"name":"Fire After Jump","effect":"Jump then shoot","difficulty":"fun"},
+{"id":77,"name":"Shoot Then Move","effect":"Shoot before moving","difficulty":"fun"},
+{"id":78,"name":"Move Then Shoot","effect":"Move before shooting","difficulty":"fun"},
+{"id":79,"name":"Alternate Fire Mode","effect":"Switch modes","difficulty":"chaos"},
+{"id":80,"name":"No Aim Assist","effect":"Disable assist","difficulty":"fun"},
+{"id":81,"name":"Max FOV","effect":"Increase FOV","difficulty":"fun"},
+{"id":82,"name":"Min FOV","effect":"Reduce FOV","difficulty":"chaos"},
+{"id":83,"name":"No Crosshair","effect":"Disable crosshair","difficulty":"hard"},
+{"id":84,"name":"Random ADS Time","effect":"Delay ADS","difficulty":"chaos"},
+{"id":85,"name":"Hold Breath Only","effect":"ADS carefully","difficulty":"fun"},
+{"id":86,"name":"Shoot After Ping","effect":"Ping then shoot","difficulty":"fun"},
+{"id":87,"name":"Ping After Kill","effect":"Ping after kills","difficulty":"fun"},
+{"id":88,"name":"Drop Ammo After Kill","effect":"Resupply after kill","difficulty":"fun"},
+{"id":89,"name":"Reload After Damage","effect":"Reload when hit","difficulty":"chaos"},
+{"id":90,"name":"Stop After Damage","effect":"Pause when hit","difficulty":"chaos"},
+{"id":91,"name":"Random Gadget Use","effect":"Use gadgets randomly","difficulty":"chaos"},
+{"id":92,"name":"No Gadget Cooldown Use","effect":"Use instantly","difficulty":"fun"},
+{"id":93,"name":"Save Gadgets Only","effect":"Use sparingly","difficulty":"fun"},
+{"id":94,"name":"Double Gadget Use","effect":"Use twice quickly","difficulty":"chaos"},
+{"id":95,"name":"Gadget First Always","effect":"Start with gadget","difficulty":"chaos"},
+{"id":96,"name":"No Strafing","effect":"No side movement","difficulty":"hard"},
+{"id":97,"name":"Strafe Only","effect":"Side movement only","difficulty":"chaos"},
+{"id":98,"name":"Forward Only","effect":"No backward movement","difficulty":"chaos"},
+{"id":99,"name":"Backward Only","effect":"Move backwards","difficulty":"chaos"},
+{"id":100,"name":"Ultimate Modifier Chaos","effect":"Stack 2 extra modifiers","difficulty":"chaos"}
+];
+
+const STRATS = [
+{"id":101,"name":"All Medics","category":"team","description":"Entire squad must run medic/support roles.","difficulty":"fun","minPlayers":2},
+{"id":102,"name":"All Recon","category":"team","description":"Everyone runs recon/sniper roles.","difficulty":"fun","minPlayers":2},
+{"id":103,"name":"All Assault","category":"team","description":"Full aggressive loadouts only.","difficulty":"fun","minPlayers":2},
+{"id":104,"name":"Shield Wall Advance","category":"team","description":"Move together slowly, never break formation.","difficulty":"fun","minPlayers":3},
+{"id":105,"name":"Tight Stack","category":"team","description":"Stay within 3 meters at all times.","difficulty":"chaos","minPlayers":2},
+{"id":106,"name":"Split Squad","category":"team","description":"Split into 2 groups and never regroup.","difficulty":"fun","minPlayers":4},
+{"id":107,"name":"Buddy Chain","category":"team","description":"Each player follows one assigned teammate.","difficulty":"fun","minPlayers":3},
+{"id":108,"name":"Protect the Worst Player","category":"team","description":"Identify weakest player, fully protect them.","difficulty":"fun","minPlayers":2},
+{"id":109,"name":"Leader Only Shooting","category":"team","description":"Only squad leader can shoot initially.","difficulty":"chaos","minPlayers":2},
+{"id":110,"name":"Follow Enemy","category":"team","description":"Pick an enemy squad and follow them.","difficulty":"chaos","minPlayers":2},
+{"id":111,"name":"Constant Push","category":"team","description":"Never stop pushing forward.","difficulty":"fun","minPlayers":2},
+{"id":112,"name":"No Push","category":"team","description":"Never push, only defend.","difficulty":"fun","minPlayers":2},
+{"id":113,"name":"Circle Movement","category":"team","description":"Move around map in a loop.","difficulty":"fun","minPlayers":2},
+{"id":114,"name":"Random Objective Rotation","category":"team","description":"Switch objective every 2 mins.","difficulty":"fun","minPlayers":2},
+{"id":115,"name":"Hold Mid Only","category":"team","description":"Control central area only.","difficulty":"fun","minPlayers":2},
+{"id":116,"name":"Edge Map Only","category":"team","description":"Stay on map edges.","difficulty":"fun","minPlayers":1},
+{"id":117,"name":"High Ground Squad","category":"team","description":"Always stay elevated.","difficulty":"fun","minPlayers":1},
+{"id":118,"name":"Low Ground Squad","category":"team","description":"Stay low ground only.","difficulty":"fun","minPlayers":1},
+{"id":119,"name":"Building Clearers","category":"team","description":"Only fight inside buildings.","difficulty":"fun","minPlayers":2},
+{"id":120,"name":"Open Field Fighters","category":"team","description":"Avoid buildings entirely.","difficulty":"chaos","minPlayers":1},
+{"id":121,"name":"Convoy Squad","category":"team","description":"Travel together in vehicles only.","difficulty":"fun","minPlayers":3},
+{"id":122,"name":"Infantry Only Unit","category":"team","description":"Never enter vehicles.","difficulty":"fun","minPlayers":1},
+{"id":123,"name":"Vehicle Hunters","category":"team","description":"Only hunt vehicles.","difficulty":"fun","minPlayers":1},
+{"id":124,"name":"Transport Crew","category":"team","description":"Focus on moving teammates.","difficulty":"fun","minPlayers":2},
+{"id":125,"name":"Air Denial","category":"team","description":"Focus on anti-air gameplay.","difficulty":"fun","minPlayers":2},
+{"id":126,"name":"Ambush Squad","category":"team","description":"Set traps and wait.","difficulty":"fun","minPlayers":2},
+{"id":127,"name":"Run and Gun","category":"team","description":"Never stop moving.","difficulty":"fun","minPlayers":1},
+{"id":128,"name":"Slow Tactical","category":"team","description":"Move slowly and clear methodically.","difficulty":"fun","minPlayers":2},
+{"id":129,"name":"No Stop Squad","category":"team","description":"Constant movement, no stopping.","difficulty":"chaos","minPlayers":1},
+{"id":130,"name":"Zig Zag Movement","category":"team","description":"Never move in straight lines.","difficulty":"chaos","minPlayers":1},
+{"id":131,"name":"Revive Priority","category":"team","description":"Revives above all else.","difficulty":"fun","minPlayers":2},
+{"id":132,"name":"Ammo Priority","category":"team","description":"Constant resupply focus.","difficulty":"fun","minPlayers":2},
+{"id":133,"name":"Spotting Squad","category":"team","description":"Maximise spotting enemies.","difficulty":"fun","minPlayers":1},
+{"id":134,"name":"Support Only","category":"team","description":"Support gadgets focus.","difficulty":"fun","minPlayers":2},
+{"id":135,"name":"No Support","category":"team","description":"No healing or ammo allowed.","difficulty":"hard","minPlayers":2},
+{"id":136,"name":"Random Spawn Squad","category":"team","description":"Spawn randomly each life.","difficulty":"fun","minPlayers":1},
+{"id":137,"name":"One Spawn Point","category":"team","description":"Use one spawn all game.","difficulty":"fun","minPlayers":2},
+{"id":138,"name":"Backline Only","category":"team","description":"Stay behind enemy lines.","difficulty":"fun","minPlayers":1},
+{"id":139,"name":"Frontline Only","category":"team","description":"Stay in main fights.","difficulty":"fun","minPlayers":1},
+{"id":140,"name":"Flank Squad","category":"team","description":"Always flank enemies.","difficulty":"fun","minPlayers":2},
+{"id":141,"name":"Noise Squad","category":"team","description":"Make as much noise as possible.","difficulty":"chaos","minPlayers":1},
+{"id":142,"name":"Silent Squad","category":"team","description":"Avoid detection entirely.","difficulty":"fun","minPlayers":2},
+{"id":143,"name":"Decoy Team","category":"team","description":"Half distract, half flank.","difficulty":"fun","minPlayers":4},
+{"id":144,"name":"Hunter Killers","category":"team","description":"Track and eliminate squads.","difficulty":"fun","minPlayers":2},
+{"id":145,"name":"Objective Ignorers","category":"team","description":"Ignore objectives completely.","difficulty":"chaos","minPlayers":1},
+{"id":146,"name":"Objective Only","category":"team","description":"Only play objective.","difficulty":"fun","minPlayers":2},
+{"id":147,"name":"Random Target","category":"team","description":"Pick random player to hunt.","difficulty":"chaos","minPlayers":2},
+{"id":148,"name":"Protect Random","category":"team","description":"Pick random teammate to defend.","difficulty":"fun","minPlayers":2},
+{"id":149,"name":"Escort Squad","category":"team","description":"Escort a moving player.","difficulty":"fun","minPlayers":2},
+{"id":150,"name":"Extraction Run","category":"team","description":"Move across map alive.","difficulty":"fun","minPlayers":2},
+{"id":151,"name":"Wipe Squad","category":"team","description":"Engage until squad wipe.","difficulty":"fun","minPlayers":2},
+{"id":152,"name":"Avoid Combat","category":"team","description":"Avoid fights where possible.","difficulty":"fun","minPlayers":1},
+{"id":153,"name":"Third Party Only","category":"team","description":"Only engage ongoing fights.","difficulty":"fun","minPlayers":1},
+{"id":154,"name":"Revenge Squad","category":"team","description":"Hunt players who killed you.","difficulty":"fun","minPlayers":1},
+{"id":155,"name":"Protect Vehicles","category":"team","description":"Escort friendly vehicles.","difficulty":"fun","minPlayers":2},
+{"id":156,"name":"Storm the Point","category":"team","description":"Rush objectives aggressively.","difficulty":"fun","minPlayers":2},
+{"id":157,"name":"Hold the Line","category":"team","description":"Defend one position.","difficulty":"fun","minPlayers":2},
+{"id":158,"name":"Leapfrog Advance","category":"team","description":"Move in alternating pushes.","difficulty":"fun","minPlayers":3},
+{"id":159,"name":"Stacked Entry","category":"team","description":"Enter buildings together.","difficulty":"fun","minPlayers":2},
+{"id":160,"name":"One Entry Only","category":"team","description":"Use one entry point repeatedly.","difficulty":"chaos","minPlayers":2},
+{"id":161,"name":"Random Direction","category":"team","description":"Pick random direction each spawn.","difficulty":"fun","minPlayers":1},
+{"id":162,"name":"Clockwise Only","category":"team","description":"Move clockwise around map.","difficulty":"fun","minPlayers":1},
+{"id":163,"name":"Anti Clockwise","category":"team","description":"Move counter-clockwise.","difficulty":"fun","minPlayers":1},
+{"id":164,"name":"Center Collapse","category":"team","description":"Collapse towards center.","difficulty":"fun","minPlayers":2},
+{"id":165,"name":"Edge Patrol","category":"team","description":"Patrol outer areas.","difficulty":"fun","minPlayers":1},
+{"id":166,"name":"Aggro Bait","category":"team","description":"Draw enemies into traps.","difficulty":"fun","minPlayers":2},
+{"id":167,"name":"Constant Rotation","category":"team","description":"Never stay in one place.","difficulty":"fun","minPlayers":1},
+{"id":168,"name":"Area Lockdown","category":"team","description":"Lock down small zone.","difficulty":"fun","minPlayers":2},
+{"id":169,"name":"Random Leader","category":"team","description":"Rotate leader constantly.","difficulty":"chaos","minPlayers":2},
+{"id":170,"name":"Copy Leader","category":"team","description":"Mirror leader actions.","difficulty":"fun","minPlayers":2},
+{"id":171,"name":"All Same Weapon","category":"team","description":"Use identical weapons.","difficulty":"fun","minPlayers":2},
+{"id":172,"name":"Mixed Weapons","category":"team","description":"All different weapon types.","difficulty":"fun","minPlayers":2},
+{"id":173,"name":"Close Range Only","category":"team","description":"Engage up close.","difficulty":"fun","minPlayers":1},
+{"id":174,"name":"Long Range Only","category":"team","description":"Keep distance always.","difficulty":"fun","minPlayers":1},
+{"id":175,"name":"Mid Range Only","category":"team","description":"Stay mid distance.","difficulty":"fun","minPlayers":1},
+{"id":176,"name":"Rush After Spawn","category":"team","description":"Push immediately after spawning.","difficulty":"fun","minPlayers":1},
+{"id":177,"name":"Wait Before Move","category":"team","description":"Delay movement after spawn.","difficulty":"chaos","minPlayers":1},
+{"id":178,"name":"Stack Revives","category":"team","description":"Only revive as group.","difficulty":"fun","minPlayers":2},
+{"id":179,"name":"Protect Reviver","category":"team","description":"Guard reviving player.","difficulty":"fun","minPlayers":2},
+{"id":180,"name":"Medic Train","category":"team","description":"Chain revives constantly.","difficulty":"fun","minPlayers":2},
+{"id":181,"name":"Single Target Focus","category":"team","description":"Focus one enemy at a time.","difficulty":"fun","minPlayers":2},
+{"id":182,"name":"Spray Squad","category":"team","description":"Suppress constantly.","difficulty":"chaos","minPlayers":1},
+{"id":183,"name":"Precision Squad","category":"team","description":"Take careful shots only.","difficulty":"fun","minPlayers":1},
+{"id":184,"name":"Aggressive Entry","category":"team","description":"Always breach aggressively.","difficulty":"fun","minPlayers":2},
+{"id":185,"name":"Defensive Entry","category":"team","description":"Hold before entering.","difficulty":"fun","minPlayers":2},
+{"id":186,"name":"Double Back","category":"team","description":"Frequently reverse direction.","difficulty":"chaos","minPlayers":1},
+{"id":187,"name":"Follow Shots","category":"team","description":"Move toward gunfire.","difficulty":"fun","minPlayers":1},
+{"id":188,"name":"Avoid Shots","category":"team","description":"Move away from gunfire.","difficulty":"fun","minPlayers":1},
+{"id":189,"name":"Random Pairing","category":"team","description":"Randomly pair up each life.","difficulty":"fun","minPlayers":2},
+{"id":190,"name":"Solo Breaks","category":"team","description":"Occasionally split solo.","difficulty":"fun","minPlayers":2},
+{"id":191,"name":"Full Stack Push","category":"team","description":"Push only as full squad.","difficulty":"fun","minPlayers":2},
+{"id":192,"name":"Half Squad Push","category":"team","description":"Push in halves.","difficulty":"fun","minPlayers":4},
+{"id":193,"name":"Alternate Push","category":"team","description":"Take turns pushing.","difficulty":"fun","minPlayers":2},
+{"id":194,"name":"Wave Attacks","category":"team","description":"Attack in waves.","difficulty":"fun","minPlayers":3},
+{"id":195,"name":"All In Push","category":"team","description":"Commit fully to fights.","difficulty":"fun","minPlayers":2},
+{"id":196,"name":"No Retreat","category":"team","description":"Never fall back.","difficulty":"chaos","minPlayers":1},
+{"id":197,"name":"Tactical Retreat","category":"team","description":"Fall back when low.","difficulty":"fun","minPlayers":1},
+{"id":198,"name":"Hold Corners","category":"team","description":"Control angles.","difficulty":"fun","minPlayers":1},
+{"id":199,"name":"Push Corners","category":"team","description":"Clear aggressively.","difficulty":"fun","minPlayers":1},
+{"id":200,"name":"Ultimate Team Chaos","category":"team","description":"Combine multiple team rules.","difficulty":"chaos","minPlayers":2}
+];
+
+let state = {
+  mod: null,
+  strat: null,
+  modLocked: false,
+  stratLocked: false,
+  diffFilter: null,
+  history: []
+};
+
+function getSquadSize() {
+  return parseInt(document.getElementById('squad-size').value) || 4;
+}
+
+function getFilteredPool(pool) {
+  let filtered = pool;
+  if (state.diffFilter) {
+    filtered = filtered.filter(x => x.difficulty === state.diffFilter);
+  }
+  return filtered;
+}
+
+function getFilteredStrats() {
+  const sq = getSquadSize();
+  let filtered = STRATS.filter(s => s.minPlayers <= sq);
+  if (state.diffFilter) filtered = filtered.filter(s => s.difficulty === state.diffFilter);
+  return filtered;
+}
+
+function pickRandom(arr, exclude) {
+  const options = exclude ? arr.filter(x => x.id !== exclude.id) : arr;
+  if (!options.length) return arr[Math.floor(Math.random() * arr.length)];
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+function renderSlot(slotId, item) {
+  const body = document.getElementById(slotId + '-body');
+  if (!item) { body.innerHTML = '<div class="empty-state">No results match filters</div>'; return; }
+  const tagHtml = `<span class="tag tag-${item.difficulty}">${item.difficulty}</span>` +
+    (item.minPlayers ? `<span class="tag tag-players">${item.minPlayers}+ players</span>` : '');
+  body.innerHTML = `
+    <div class="result-id">#${String(item.id).padStart(3,'0')}</div>
+    <div class="result-name">${item.name}</div>
+    <div class="result-effect">${item.effect || item.description}</div>
+    <div class="result-tags">${tagHtml}</div>
+  `;
+}
+
+function animateSpin(bodyId, finalItem, onDone) {
+  const body = document.getElementById(bodyId);
+  body.classList.add('spinning');
+  const mockNames = ['SCANNING...','LOADING...','TARGET ACQUIRED','DEPLOYING...','STANDBY...'];
+  let ticks = 0;
+  const total = 12;
+  const interval = setInterval(() => {
+    body.innerHTML = `<div class="result-id">###</div><div class="result-name">${mockNames[ticks % mockNames.length]}</div><div class="result-effect">...</div>`;
+    ticks++;
+    if (ticks >= total) {
+      clearInterval(interval);
+      body.classList.remove('spinning');
+      renderSlot(bodyId.replace('-body',''), finalItem);
+      body.classList.add('landing');
+      setTimeout(() => body.classList.remove('landing'), 500);
+      onDone && onDone();
+    }
+  }, 70);
+}
+
+function rollAll() {
+  const modPool = getFilteredPool(MODIFIERS);
+  const stratPool = getFilteredStrats();
+  const btn = document.getElementById('main-roll');
+  btn.disabled = true;
+
+  const newMod = state.modLocked ? state.mod : pickRandom(modPool, state.mod);
+  const newStrat = state.stratLocked ? state.strat : pickRandom(stratPool, state.strat);
+
+  let done = 0;
+  const finish = () => { done++; if (done === 2) { btn.disabled = false; pushHistory(newMod, newStrat); } };
+
+  if (!state.modLocked) {
+    animateSpin('mod-body', newMod, finish);
+    state.mod = newMod;
+  } else {
+    finish();
+  }
+
+  if (!state.stratLocked) {
+    animateSpin('strat-body', newStrat, finish);
+    state.strat = newStrat;
+  } else {
+    finish();
+  }
+}
+
+function rerollOne(type) {
+  if ((type === 'mod' && state.modLocked) || (type === 'strat' && state.stratLocked)) return;
+  const pool = type === 'mod' ? getFilteredPool(MODIFIERS) : getFilteredStrats();
+  const current = type === 'mod' ? state.mod : state.strat;
+  const next = pickRandom(pool, current);
+  if (type === 'mod') state.mod = next;
+  else state.strat = next;
+  animateSpin(type + '-body', next, null);
+}
+
+function toggleLock(type) {
+  if (type === 'mod') {
+    state.modLocked = !state.modLocked;
+    updateLockBtn('mod-lock', state.modLocked);
+  } else {
+    state.stratLocked = !state.stratLocked;
+    updateLockBtn('strat-lock', state.stratLocked);
+  }
+}
+
+function updateLockBtn(id, locked) {
+  const btn = document.getElementById(id);
+  btn.innerHTML = locked ? '<span class="lock-icon">●</span> Locked' : '<span class="lock-icon">○</span> Lock';
+  btn.classList.toggle('locked', locked);
+}
+
+function toggleFilter(diff) {
+  state.diffFilter = state.diffFilter === diff ? null : diff;
+  ['fun','chaos','hard'].forEach(d => {
+    const btn = document.getElementById('f-' + d);
+    btn.className = 'filter-btn' + (state.diffFilter === d ? ` active-${d}` : '');
+  });
+}
+
+function pushHistory(mod, strat) {
+  if (!mod && !strat) return;
+  state.history.unshift({ mod, strat, ts: new Date().toLocaleTimeString() });
+  if (state.history.length > 8) state.history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!state.history.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:1rem 0">No rolls yet.</div>';
+    return;
+  }
+  list.innerHTML = state.history.map((h, i) => `
+    <div class="history-item">
+      <div>
+        <div class="h-label">Modifier</div>
+        <div class="h-val"><strong>${h.mod ? h.mod.name : '—'}</strong></div>
+      </div>
+      <div>
+        <div class="h-label">Strat</div>
+        <div class="h-val"><strong>${h.strat ? h.strat.name : '—'}</strong></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  state.history = [];
+  renderHistory();
+}
+</script>
+</body>
+</html>
